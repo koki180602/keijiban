@@ -1,4 +1,3 @@
-
 // ========================================
 // COMMUNITY BOARD
 // 掲示板メインプログラム（Supabase対応版）
@@ -105,9 +104,10 @@ function readImage(file) {
             return;
         }
 
-        if (file.size > 1024 * 1024) {
+        // 画像サイズ上限：8MB
+        if (file.size > 8 * 1024 * 1024) {
             reject(new Error(
-                "画像サイズは1MB以下にしてください。"
+                "画像サイズは8MB以下にしてください。"
             ));
             return;
         }

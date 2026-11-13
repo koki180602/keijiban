@@ -57,13 +57,15 @@
                     required
                 ></textarea>
 
-                <label for="threadImage">画像を添付（任意）</label>
+                <label for="threadImage">画像を添付（任意・最大8MB）</label>
 
                 <input
                     type="file"
                     id="threadImage"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                 >
+
+                <p>対応形式：JPEG・PNG・WEBP・GIF（1枚8MBまで）</p>
 
                 <div id="imagePreview"></div>
 
@@ -95,10 +97,24 @@
 
     <!-- スレッド作成処理 -->
     <script>
+
         const form = document.getElementById("threadForm");
         const imageInput = document.getElementById("threadImage");
         const preview = document.getElementById("imagePreview");
         const submitButton = document.getElementById("submitThread");
+
+        // ====================================
+        // 画像設定
+        // ====================================
+
+        const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
+
+        const ALLOWED_TYPES = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif"
+        ];
 
         // ====================================
         // 画像読み込み
@@ -113,23 +129,16 @@
                     return;
                 }
 
-                const allowedTypes = [
-                    "image/jpeg",
-                    "image/png",
-                    "image/webp",
-                    "image/gif"
-                ];
-
-                if (!allowedTypes.includes(file.type)) {
+                if (!ALLOWED_TYPES.includes(file.type)) {
                     reject(new Error(
                         "JPEG、PNG、WEBP、GIF画像を選択してください。"
                     ));
                     return;
                 }
 
-                if (file.size > 1024 * 1024) {
+                if (file.size > MAX_IMAGE_SIZE) {
                     reject(new Error(
-                        "画像サイズは1MB以下にしてください。"
+                        "画像サイズは8MB以下にしてください。"
                     ));
                     return;
                 }
@@ -143,6 +152,7 @@
                 );
 
                 reader.readAsDataURL(file);
+
             });
         }
 
@@ -173,8 +183,10 @@
 
                 alert(error.message);
                 imageInput.value = "";
+                preview.innerHTML = "";
 
             }
+
         });
 
         // ====================================
@@ -213,7 +225,6 @@
 
                 const image = await readImage(imageFile);
 
-                // Supabaseに保存
                 const newThread = await Works.createThread({
                     title,
                     category,
@@ -229,7 +240,6 @@
 
                 alert("スレッドを投稿しました！");
 
-                // 投稿したスレッドを開く
                 window.location.href =
                     "index.html?thread=" +
                     encodeURIComponent(newThread.id);
@@ -237,6 +247,7 @@
             } catch (error) {
 
                 console.error("投稿エラー:", error);
+
                 alert(error.message || "投稿に失敗しました。");
 
             } finally {

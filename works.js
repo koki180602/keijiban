@@ -1,7 +1,7 @@
 
 // ========================================
 // COMMUNITY BOARD
-// データ保存・管理（Supabase版）
+// データ保存・管理（Supabase Storage対応版）
 // ========================================
 
 // ========================================
@@ -31,6 +31,20 @@ try {
 }
 
 // ========================================
+// 画像設定
+// ========================================
+
+const IMAGE_BUCKET = "community-images";
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+];
+
+// ========================================
 // Works本体
 // ========================================
 
@@ -46,6 +60,77 @@ const Works = {
 
     isConnected() {
         return supabaseClient !== null;
+    },
+
+    // ====================================
+    // 画像アップロード
+    // ====================================
+
+    async uploadImage(imageData, folder = "threads") {
+
+        if (!imageData) return null;
+
+        // 既にURL形式ならそのまま使用
+        if (
+            typeof imageData === "string" &&
+            imageData.startsWith("http")
+        ) {
+            return imageData;
+        }
+
+        try {
+            const response = await fetch(imageData);
+
+            if (!response.ok) {
+                throw new Error("画像データを読み込めませんでした。");
+            }
+
+            const blob = await response.blob();
+
+            // 8MB制限
+            if (blob.size > MAX_IMAGE_SIZE) {
+                throw new Error("画像は8MB以下にしてください。");
+            }
+
+            // 画像形式チェック
+            if (!ALLOWED_IMAGE_TYPES.includes(blob.type)) {
+                throw new Error(
+                    "JPEG・PNG・WEBP・GIF形式の画像を使用してください。"
+                );
+            }
+
+            const extensions = {
+                "image/jpeg": "jpg",
+                "image/png": "png",
+                "image/webp": "webp",
+                "image/gif": "gif"
+            };
+
+            const fileName =
+                `${folder}/${crypto.randomUUID()}.${extensions[blob.type]}`;
+
+            const { data, error } = await supabaseClient
+                .storage
+                .from(IMAGE_BUCKET)
+                .upload(fileName, blob, {
+                    contentType: blob.type,
+                    cacheControl: "3600",
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: publicData } = supabaseClient
+                .storage
+                .from(IMAGE_BUCKET)
+                .getPublicUrl(data.path);
+
+            return publicData.publicUrl;
+
+        } catch (error) {
+            console.error("画像アップロードエラー:", error);
+            throw error;
+        }
     },
 
     // ====================================
@@ -83,6 +168,7 @@ const Works = {
                 image: thread.image || null,
                 author: thread.author || "匿名ユーザー",
                 createdAt: thread.created_at,
+
                 comments: (comments || [])
                     .filter(comment => comment.thread_id === thread.id)
                     .map(comment => ({
@@ -110,12 +196,18 @@ const Works = {
         if (!supabaseClient) return null;
 
         try {
+
+            // 画像をStorageへアップロード
+            const imageUrl = data.image
+                ? await this.uploadImage(data.image, "threads")
+                : null;
+
             const newThread = {
                 id: crypto.randomUUID(),
                 title: data.title,
                 category: data.category,
                 content: data.content,
-                image: data.image || null,
+                image: imageUrl,
                 author: "匿名ユーザー"
             };
 
@@ -148,12 +240,19 @@ const Works = {
     // コメント・返信追加
     // ====================================
 
-    async addComment(threadId, content, parentId = null, image = null) {
+    async addComment(
+        threadId,
+        content,
+        parentId = null,
+        image = null
+    ) {
 
         if (!supabaseClient) return false;
 
         try {
+
             if (parentId) {
+
                 const { data: parent, error: parentError } =
                     await supabaseClient
                         .from(this.COMMENT_TABLE)
@@ -166,12 +265,17 @@ const Works = {
                 if (!parent) return false;
             }
 
+            // コメント画像をStorageへアップロード
+            const imageUrl = image
+                ? await this.uploadImage(image, "comments")
+                : null;
+
             const newComment = {
                 id: crypto.randomUUID(),
                 thread_id: threadId,
                 parent_id: parentId,
                 content: content,
-                image: image || null,
+                image: imageUrl,
                 author: "匿名ユーザー"
             };
 
@@ -198,6 +302,7 @@ const Works = {
         if (!supabaseClient) return [];
 
         try {
+
             const { data, error } = await supabaseClient
                 .from(this.REPORT_TABLE)
                 .select("*")
@@ -228,6 +333,7 @@ const Works = {
         if (!supabaseClient) return false;
 
         try {
+
             const newReport = {
                 id: crypto.randomUUID(),
                 thread_id: threadId,
@@ -258,6 +364,7 @@ const Works = {
         if (!supabaseClient) return false;
 
         try {
+
             const { error } = await supabaseClient
                 .from(this.THREAD_TABLE)
                 .delete()
@@ -282,6 +389,7 @@ const Works = {
         if (!supabaseClient) return false;
 
         try {
+
             const { data: comments, error: fetchError } =
                 await supabaseClient
                     .from(this.COMMENT_TABLE)
@@ -295,9 +403,11 @@ const Works = {
             let changed = true;
 
             while (changed) {
+
                 changed = false;
 
                 (comments || []).forEach(comment => {
+
                     if (
                         comment.parent_id &&
                         deleteIds.has(comment.parent_id) &&
@@ -306,6 +416,7 @@ const Works = {
                         deleteIds.add(comment.id);
                         changed = true;
                     }
+
                 });
             }
 
