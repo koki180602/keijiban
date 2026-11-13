@@ -11,7 +11,6 @@
 
 <body>
 
-    <!-- ヘッダー -->
     <header class="header">
         <div class="header-inner">
             <h1>COMMUNITY BOARD</h1>
@@ -21,12 +20,11 @@
 
     <main class="container">
 
-        <!-- スレッド作成フォーム -->
         <section class="post-section">
 
             <h2>スレッドを作成</h2>
 
-            <form id="threadForm">
+            <form id="threadForm" onsubmit="event.preventDefault();">
 
                 <label for="threadTitle">タイトル</label>
 
@@ -69,6 +67,8 @@
 
                 <div id="imagePreview"></div>
 
+                <p id="postStatus" role="status"></p>
+
                 <button type="submit" id="submitThread">
                     スレッドを投稿する
                 </button>
@@ -83,29 +83,22 @@
 
     </main>
 
-    <!-- フッター -->
     <footer class="footer">
         <p>COMMUNITY BOARD</p>
         <p>Anonymous Community</p>
     </footer>
 
-    <!-- Supabaseライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- データ管理 -->
     <script src="works.js"></script>
 
-    <!-- スレッド作成処理 -->
     <script>
+    (() => {
 
         const form = document.getElementById("threadForm");
         const imageInput = document.getElementById("threadImage");
         const preview = document.getElementById("imagePreview");
         const submitButton = document.getElementById("submitThread");
-
-        // ====================================
-        // 画像設定
-        // ====================================
+        const status = document.getElementById("postStatus");
 
         const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 
@@ -116,12 +109,7 @@
             "image/gif"
         ];
 
-        // ====================================
-        // 画像読み込み
-        // ====================================
-
         function readImage(file) {
-
             return new Promise((resolve, reject) => {
 
                 if (!file) {
@@ -152,50 +140,39 @@
                 );
 
                 reader.readAsDataURL(file);
-
             });
         }
-
-        // ====================================
-        // 画像プレビュー
-        // ====================================
 
         imageInput.addEventListener("change", async () => {
 
             preview.innerHTML = "";
+            status.textContent = "";
 
             const file = imageInput.files[0];
 
             if (!file) return;
 
             try {
-
                 const image = await readImage(file);
 
                 const img = document.createElement("img");
-
                 img.src = image;
                 img.alt = "画像プレビュー";
 
                 preview.appendChild(img);
 
             } catch (error) {
-
                 alert(error.message);
                 imageInput.value = "";
                 preview.innerHTML = "";
-
             }
-
         });
-
-        // ====================================
-        // スレッド投稿
-        // ====================================
 
         form.addEventListener("submit", async (event) => {
 
             event.preventDefault();
+
+            if (submitButton.disabled) return;
 
             const title = document.getElementById("threadTitle")
                 .value.trim();
@@ -213,30 +190,35 @@
                 return;
             }
 
-            if (!Works.isConnected()) {
-                alert("データベースに接続できません。接続設定を確認してください。");
+            if (typeof Works === "undefined" || !Works.isConnected()) {
+                status.textContent =
+                    "データベースに接続できません。";
+                alert("データベースに接続できません。works.jsを確認してください。");
                 return;
             }
 
             submitButton.disabled = true;
             submitButton.textContent = "投稿中...";
+            status.textContent = "投稿を保存しています...";
 
             try {
 
                 const image = await readImage(imageFile);
 
                 const newThread = await Works.createThread({
-                    title,
-                    category,
-                    content,
-                    image
+                    title: title,
+                    category: category,
+                    content: content,
+                    image: image
                 });
 
                 if (!newThread) {
                     throw new Error(
-                        "投稿を保存できませんでした。時間をおいて再度お試しください。"
+                        "投稿を保存できませんでした。works.jsやSupabaseの設定を確認してください。"
                     );
                 }
+
+                status.textContent = "投稿しました！";
 
                 alert("スレッドを投稿しました！");
 
@@ -248,7 +230,13 @@
 
                 console.error("投稿エラー:", error);
 
-                alert(error.message || "投稿に失敗しました。");
+                status.textContent =
+                    error.message || "投稿に失敗しました。";
+
+                alert(
+                    error.message ||
+                    "投稿に失敗しました。"
+                );
 
             } finally {
 
@@ -259,6 +247,7 @@
 
         });
 
+    })();
     </script>
 
 </body>
