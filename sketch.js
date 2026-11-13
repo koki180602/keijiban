@@ -1,7 +1,7 @@
 
 // ========================================
 // COMMUNITY BOARD
-// 掲示板メインプログラム
+// 掲示板メインプログラム（Supabase対応版）
 // ========================================
 
 let currentThreadId = null;
@@ -45,7 +45,7 @@ function getPostNumbers(thread) {
 
     numbers.set("thread", 1);
 
-    thread.comments.forEach((comment, index) => {
+    (thread.comments || []).forEach((comment, index) => {
         numbers.set(comment.id, index + 2);
     });
 
@@ -58,13 +58,14 @@ function getPostNumbers(thread) {
 
 function getThreadURL(threadId) {
     const url = new URL("index.html", window.location.href);
-
     url.searchParams.set("thread", threadId);
-
     return url.toString();
 }
 
+// ========================================
 // URLコピー
+// ========================================
+
 async function copyThreadURL() {
     if (!currentThreadId) return;
 
@@ -156,33 +157,109 @@ async function showImagePreview(inputId, previewId) {
 // スレッド一覧
 // ========================================
 
-function renderThreads() {
+async function renderThreads() {
     const threadList = document.getElementById("threadList");
     const threadCount = document.getElementById("threadCount");
 
-    const threads = Works.getThreads();
+    threadList.innerHTML = "<p>スレッドを読み込んでいます...</p>";
 
-    const keyword = currentSearch.toLowerCase();
+    try {
+        const threads = await Works.getThreads();
 
-    const filteredThreads = threads.filter(thread => {
-        return (
-            thread.title.toLowerCase().includes(keyword) ||
-            thread.content.toLowerCase().includes(keyword) ||
-            thread.category.toLowerCase().includes(keyword)
-        );
-    });
+        const keyword = currentSearch.toLowerCase();
 
-    threadCount.textContent = filteredThreads.length + "件";
+        const filteredThreads = threads.filter(thread => {
+            return (
+                (thread.title || "").toLowerCase().includes(keyword) ||
+                (thread.content || "").toLowerCase().includes(keyword) ||
+                (thread.category || "").toLowerCase().includes(keyword)
+            );
+        });
 
-    if (filteredThreads.length === 0) {
+        threadCount.textContent = filteredThreads.length + "件";
+
+        if (filteredThreads.length === 0) {
+            threadList.innerHTML =
+                "<p>該当するスレッドはありません。</p>";
+            return;
+        }
+
+        threadList.innerHTML = filteredThreads.map(thread => `
+            <article class="thread-card" data-id="${escapeHTML(thread.id)}">
+
+                <div class="thread-meta">
+                    <span class="thread-category">
+                        ${escapeHTML(thread.category)}
+                    </span>
+
+                    <span>匿名ユーザー</span>
+
+                    <span>${formatDate(thread.createdAt)}</span>
+                </div>
+
+                <h3>${escapeHTML(thread.title)}</h3>
+
+                <p>${escapeHTML((thread.content || "").slice(0, 120))}</p>
+
+                <p>コメント：${(thread.comments || []).length}件</p>
+
+                <button type="button" class="open-thread">
+                    スレッドを見る
+                </button>
+
+            </article>
+        `).join("");
+
+    } catch (error) {
+        console.error("スレッド一覧の表示エラー:", error);
         threadList.innerHTML =
-            "<p>該当するスレッドはありません。</p>";
-        return;
+            "<p>スレッドを読み込めませんでした。時間をおいて再度お試しください。</p>";
     }
+}
 
-    threadList.innerHTML = filteredThreads.map(thread => `
-        <article class="thread-card" data-id="${escapeHTML(thread.id)}">
+// ========================================
+// スレッド詳細
+// ========================================
 
+async function openThread(threadId, updateHistory = true) {
+
+    try {
+        const threads = await Works.getThreads();
+
+        const thread = threads.find(
+            item => item.id === threadId
+        );
+
+        if (!thread) {
+            alert("このスレッドは見つかりませんでした。削除されたか、URLが正しくない可能性があります。");
+
+            if (updateHistory) {
+                showThreadList();
+            }
+
+            return;
+        }
+
+        currentThreadId = threadId;
+        replyParentId = null;
+
+        if (updateHistory) {
+            history.pushState(
+                { threadId },
+                "",
+                getThreadURL(threadId)
+            );
+        }
+
+        document.querySelector(".thread-section").hidden = true;
+        document.querySelector(".search-section").hidden = true;
+        document.querySelector(".dashboard-actions").hidden = true;
+        document.querySelector(".report-section").hidden = true;
+
+        document.getElementById("threadDetail").hidden = false;
+
+        // スレッド本文
+        document.getElementById("threadDetailContent").innerHTML = `
             <div class="thread-meta">
                 <span class="thread-category">
                     ${escapeHTML(thread.category)}
@@ -193,102 +270,47 @@ function renderThreads() {
                 <span>${formatDate(thread.createdAt)}</span>
             </div>
 
-            <h3>${escapeHTML(thread.title)}</h3>
+            <h2 id="post-1">
+                No.1 ${escapeHTML(thread.title)}
+            </h2>
 
-            <p>${escapeHTML(thread.content.slice(0, 120))}</p>
+            <p class="post-content">
+                ${escapeHTML(thread.content)}
+            </p>
 
-            <p>コメント：${thread.comments.length}件</p>
+            ${thread.image ? `
+                <img
+                    src="${escapeHTML(thread.image)}"
+                    alt="投稿画像"
+                    class="post-image"
+                >
+            ` : ""}
 
-            <button type="button" class="open-thread">
-                スレッドを見る
+            <button type="button" id="detailReportButton">
+                通報
             </button>
+        `;
 
-        </article>
-    `).join("");
-}
+        // 検索欄リセット
+        document.getElementById("threadSearchInput").value = "";
+        document.getElementById("threadSearchResults").innerHTML = "";
 
-// ========================================
-// スレッド詳細
-// ========================================
+        // コメント欄リセット
+        document.getElementById("commentContent").value = "";
+        document.getElementById("commentImage").value = "";
+        document.getElementById("commentImagePreview").innerHTML = "";
 
-function openThread(threadId, updateHistory = true) {
-    const threads = Works.getThreads();
+        document.getElementById("replyTarget").innerHTML = "";
+        document.getElementById("submitComment").textContent = "コメントする";
 
-    const thread = threads.find(
-        item => item.id === threadId
-    );
+        renderComments(thread);
 
-    if (!thread) {
-        alert("このスレッドは見つかりませんでした。");
-        return;
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+        console.error("スレッド詳細の取得エラー:", error);
+        alert("スレッドを読み込めませんでした。");
     }
-
-    currentThreadId = threadId;
-    replyParentId = null;
-
-    if (updateHistory) {
-        history.pushState(
-            { threadId },
-            "",
-            getThreadURL(threadId)
-        );
-    }
-
-    document.querySelector(".thread-section").hidden = true;
-    document.querySelector(".search-section").hidden = true;
-    document.querySelector(".dashboard-actions").hidden = true;
-    document.querySelector(".report-section").hidden = true;
-
-    document.getElementById("threadDetail").hidden = false;
-
-    // スレッド本文
-    document.getElementById("threadDetailContent").innerHTML = `
-        <div class="thread-meta">
-            <span class="thread-category">
-                ${escapeHTML(thread.category)}
-            </span>
-
-            <span>匿名ユーザー</span>
-
-            <span>${formatDate(thread.createdAt)}</span>
-        </div>
-
-        <h2 id="post-1">
-            No.1 ${escapeHTML(thread.title)}
-        </h2>
-
-        <p class="post-content">
-            ${escapeHTML(thread.content)}
-        </p>
-
-        ${thread.image ? `
-            <img
-                src="${escapeHTML(thread.image)}"
-                alt="投稿画像"
-                class="post-image"
-            >
-        ` : ""}
-
-        <button type="button" id="detailReportButton">
-            通報
-        </button>
-    `;
-
-    // 検索欄リセット
-    document.getElementById("threadSearchInput").value = "";
-    document.getElementById("threadSearchResults").innerHTML = "";
-
-    // コメント欄リセット
-    document.getElementById("commentContent").value = "";
-    document.getElementById("commentImage").value = "";
-    document.getElementById("commentImagePreview").innerHTML = "";
-
-    document.getElementById("replyTarget").innerHTML = "";
-    document.getElementById("submitComment").textContent = "コメントする";
-
-    renderComments(thread);
-
-    window.scrollTo(0, 0);
 }
 
 // ========================================
@@ -444,7 +466,7 @@ function scrollToPost(number) {
 // スレッド内検索
 // ========================================
 
-function searchInsideThread() {
+async function searchInsideThread() {
     const keyword = document.getElementById("threadSearchInput")
         .value.trim().toLowerCase();
 
@@ -457,70 +479,79 @@ function searchInsideThread() {
         return;
     }
 
-    const threads = Works.getThreads();
+    try {
+        const threads = await Works.getThreads();
 
-    const thread = threads.find(
-        item => item.id === currentThreadId
-    );
+        const thread = threads.find(
+            item => item.id === currentThreadId
+        );
 
-    if (!thread) return;
+        if (!thread) {
+            results.innerHTML = "<p>スレッドが見つかりません。</p>";
+            return;
+        }
 
-    const numbers = getPostNumbers(thread);
-    const matches = [];
+        const numbers = getPostNumbers(thread);
+        const matches = [];
 
-    if (thread.content.toLowerCase().includes(keyword)) {
-        matches.push({
-            number: 1,
-            type: "スレッド本文",
-            content: thread.content
-        });
-    }
-
-    thread.comments.forEach(comment => {
-        if (comment.content.toLowerCase().includes(keyword)) {
+        if ((thread.content || "").toLowerCase().includes(keyword)) {
             matches.push({
-                number: numbers.get(comment.id),
-                type: comment.parentId ? "返信" : "コメント",
-                content: comment.content
+                number: 1,
+                type: "スレッド本文",
+                content: thread.content
             });
         }
-    });
 
-    if (matches.length === 0) {
-        results.innerHTML = "<p>該当する投稿はありません。</p>";
-        return;
-    }
+        thread.comments.forEach(comment => {
+            if ((comment.content || "").toLowerCase().includes(keyword)) {
+                matches.push({
+                    number: numbers.get(comment.id),
+                    type: comment.parentId ? "返信" : "コメント",
+                    content: comment.content
+                });
+            }
+        });
 
-    results.innerHTML = `
-        <div class="search-result-heading">
-            ${matches.length}件見つかりました
-        </div>
+        if (matches.length === 0) {
+            results.innerHTML = "<p>該当する投稿はありません。</p>";
+            return;
+        }
 
-        ${matches.map(item => `
-            <div class="search-result-item">
-
-                <strong>No.${item.number} ・ ${item.type}</strong>
-
-                <p>${escapeHTML(item.content.slice(0, 100))}</p>
-
-                <button
-                    type="button"
-                    class="search-result-button"
-                    data-number="${item.number}"
-                >
-                    この投稿へ移動
-                </button>
-
+        results.innerHTML = `
+            <div class="search-result-heading">
+                ${matches.length}件見つかりました
             </div>
-        `).join("")}
-    `;
+
+            ${matches.map(item => `
+                <div class="search-result-item">
+
+                    <strong>No.${item.number} ・ ${item.type}</strong>
+
+                    <p>${escapeHTML(item.content.slice(0, 100))}</p>
+
+                    <button
+                        type="button"
+                        class="search-result-button"
+                        data-number="${item.number}"
+                    >
+                        この投稿へ移動
+                    </button>
+
+                </div>
+            `).join("")}
+        `;
+
+    } catch (error) {
+        console.error("スレッド内検索エラー:", error);
+        results.innerHTML = "<p>検索に失敗しました。</p>";
+    }
 }
 
 // ========================================
 // 通報
 // ========================================
 
-function reportThread(threadId) {
+async function reportThread(threadId) {
     const reason = prompt("通報理由を入力してください。");
 
     if (reason === null) return;
@@ -530,39 +561,70 @@ function reportThread(threadId) {
         return;
     }
 
-    const saved = Works.reportThread(threadId, reason.trim());
+    try {
+        const saved = await Works.reportThread(
+            threadId,
+            reason.trim()
+        );
 
-    alert(
-        saved
-            ? "通報を受け付けました。"
-            : "通報を保存できませんでした。"
-    );
+        alert(
+            saved
+                ? "通報を受け付けました。"
+                : "通報を保存できませんでした。"
+        );
+
+    } catch (error) {
+        console.error("通報エラー:", error);
+        alert("通報に失敗しました。");
+    }
 }
 
 // ========================================
 // 初期設定
 // ========================================
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
 
+    // ====================================
+    // Supabase接続確認
+    // ====================================
+
+    if (!Works.isConnected()) {
+        document.getElementById("threadList").innerHTML =
+            "<p>データベースに接続できません。接続設定を確認してください。</p>";
+        return;
+    }
+
+    // ====================================
     // スレッド一覧表示
-    renderThreads();
+    // ====================================
 
+    await renderThreads();
+
+    // ====================================
     // URLからスレッドを開く
+    // ====================================
+
     const params = new URLSearchParams(window.location.search);
     const threadIdFromURL = params.get("thread");
 
     if (threadIdFromURL) {
-        openThread(threadIdFromURL, false);
+        await openThread(threadIdFromURL, false);
     }
 
+    // ====================================
     // コメント画像プレビュー
+    // ====================================
+
     document.getElementById("commentImage")
         .addEventListener("change", function () {
             showImagePreview("commentImage", "commentImagePreview");
         });
 
+    // ====================================
     // 全体検索
+    // ====================================
+
     function searchThreads() {
         currentSearch = document.getElementById("searchInput")
             .value.trim().toLowerCase();
@@ -576,7 +638,10 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("searchInput")
         .addEventListener("input", searchThreads);
 
+    // ====================================
     // スレッド一覧の操作
+    // ====================================
+
     document.getElementById("threadList")
         .addEventListener("click", function (event) {
 
@@ -590,11 +655,17 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+    // ====================================
     // URLコピー
+    // ====================================
+
     document.getElementById("copyDetailURL")
         .addEventListener("click", copyThreadURL);
 
+    // ====================================
     // 通報
+    // ====================================
+
     document.getElementById("threadDetailContent")
         .addEventListener("click", function (event) {
 
@@ -603,13 +674,19 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+    // ====================================
     // 一覧に戻る
+    // ====================================
+
     document.getElementById("backButton")
         .addEventListener("click", function () {
             showThreadList();
         });
 
+    // ====================================
     // コメント・返信投稿
+    // ====================================
+
     document.getElementById("commentForm")
         .addEventListener("submit", async function (event) {
 
@@ -629,11 +706,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const button = document.getElementById("submitComment");
             button.disabled = true;
+            button.textContent = "投稿中...";
 
             try {
                 const image = await readImage(imageFile);
 
-                const saved = Works.addComment(
+                const saved = await Works.addComment(
                     currentThreadId,
                     content,
                     replyParentId,
@@ -642,7 +720,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (!saved) {
                     throw new Error(
-                        "コメントを保存できませんでした。保存容量を確認してください。"
+                        "コメントを保存できませんでした。"
                     );
                 }
 
@@ -654,22 +732,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 replyParentId = null;
                 button.textContent = "コメントする";
 
-                const threads = Works.getThreads();
+                const threads = await Works.getThreads();
 
                 const thread = threads.find(
                     item => item.id === currentThreadId
                 );
 
-                renderComments(thread);
+                if (thread) {
+                    renderComments(thread);
+                }
+
+                await renderThreads();
 
             } catch (error) {
+                console.error("コメント投稿エラー:", error);
                 alert(error.message);
             } finally {
                 button.disabled = false;
+
+                if (replyParentId) {
+                    button.textContent = "返信する";
+                } else {
+                    button.textContent = "コメントする";
+                }
             }
         });
 
+    // ====================================
     // 返信ボタン
+    // ====================================
+
     document.getElementById("commentList")
         .addEventListener("click", function (event) {
 
@@ -695,7 +787,10 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
         });
 
+    // ====================================
     // 返信解除
+    // ====================================
+
     document.getElementById("replyTarget")
         .addEventListener("click", function (event) {
 
@@ -709,7 +804,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 "コメントする";
         });
 
+    // ====================================
     // 返信先リンク
+    // ====================================
+
     document.getElementById("commentList")
         .addEventListener("click", function (event) {
 
@@ -721,7 +819,10 @@ document.addEventListener("DOMContentLoaded", function () {
             scrollToPost(link.dataset.target);
         });
 
+    // ====================================
     // 投稿番号リンク
+    // ====================================
+
     document.getElementById("commentList")
         .addEventListener("click", function (event) {
 
@@ -733,7 +834,10 @@ document.addEventListener("DOMContentLoaded", function () {
             scrollToPost(link.textContent.trim());
         });
 
+    // ====================================
     // スレッド内検索
+    // ====================================
+
     document.getElementById("threadSearchButton")
         .addEventListener("click", searchInsideThread);
 
@@ -749,7 +853,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+    // ====================================
     // 検索結果から投稿へ移動
+    // ====================================
+
     document.getElementById("threadSearchResults")
         .addEventListener("click", function (event) {
 
@@ -759,14 +866,17 @@ document.addEventListener("DOMContentLoaded", function () {
             scrollToPost(button.dataset.number);
         });
 
+    // ====================================
     // ブラウザの戻る・進む
-    window.addEventListener("popstate", function () {
+    // ====================================
+
+    window.addEventListener("popstate", async function () {
 
         const params = new URLSearchParams(window.location.search);
         const threadId = params.get("thread");
 
         if (threadId) {
-            openThread(threadId, false);
+            await openThread(threadId, false);
         } else {
             showThreadList(false);
         }

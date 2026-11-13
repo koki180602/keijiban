@@ -1,44 +1,103 @@
 
 // ========================================
 // COMMUNITY BOARD
-// データ保存・管理
+// データ保存・管理（Supabase版）
+// ========================================
+
+// ========================================
+// Supabase接続設定
+// ========================================
+
+const SUPABASE_URL = "https://cjszonyivmukhfectyzh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Kns_8BMpE_AyNNTev403Jg_z-oxlMO6";
+
+let supabaseClient = null;
+
+try {
+    if (
+        window.supabase &&
+        !SUPABASE_URL.includes("ここに") &&
+        !SUPABASE_ANON_KEY.includes("ここに")
+    ) {
+        supabaseClient = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+        );
+    } else {
+        console.warn("Supabaseの接続情報が未設定です。");
+    }
+} catch (error) {
+    console.error("Supabase接続エラー:", error);
+}
+
+// ========================================
+// Works本体
 // ========================================
 
 const Works = {
 
-    THREAD_KEY: "community_threads",
-    REPORT_KEY: "community_reports",
+    THREAD_TABLE: "threads",
+    COMMENT_TABLE: "comments",
+    REPORT_TABLE: "reports",
 
     // ====================================
-    // スレッド取得
+    // 接続確認
     // ====================================
 
-    getThreads() {
-        try {
-            const data = localStorage.getItem(this.THREAD_KEY);
-            return data ? JSON.parse(data) : [];
-        } catch (error) {
-            console.error("スレッド読み込みエラー", error);
-            return [];
-        }
+    isConnected() {
+        return supabaseClient !== null;
     },
 
     // ====================================
-    // スレッド保存
+    // スレッド一覧取得
     // ====================================
 
-    saveThreads(threads) {
-        try {
-            localStorage.setItem(
-                this.THREAD_KEY,
-                JSON.stringify(threads)
-            );
+    async getThreads() {
 
-            return true;
+        if (!supabaseClient) {
+            console.error("Supabase未接続");
+            return [];
+        }
+
+        try {
+            const { data: threads, error } = await supabaseClient
+                .from(this.THREAD_TABLE)
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+
+            const { data: comments, error: commentError } =
+                await supabaseClient
+                    .from(this.COMMENT_TABLE)
+                    .select("*")
+                    .order("created_at", { ascending: true });
+
+            if (commentError) throw commentError;
+
+            return (threads || []).map(thread => ({
+                id: thread.id,
+                title: thread.title,
+                category: thread.category,
+                content: thread.content,
+                image: thread.image || null,
+                author: thread.author || "匿名ユーザー",
+                createdAt: thread.created_at,
+                comments: (comments || [])
+                    .filter(comment => comment.thread_id === thread.id)
+                    .map(comment => ({
+                        id: comment.id,
+                        parentId: comment.parent_id,
+                        content: comment.content,
+                        image: comment.image || null,
+                        author: comment.author || "匿名ユーザー",
+                        createdAt: comment.created_at
+                    }))
+            }));
 
         } catch (error) {
-            console.error("スレッド保存エラー", error);
-            return false;
+            console.error("スレッド取得エラー:", error);
+            return [];
         }
     },
 
@@ -46,87 +105,116 @@ const Works = {
     // スレッド作成
     // ====================================
 
-    createThread(data) {
+    async createThread(data) {
 
-        const threads = this.getThreads();
+        if (!supabaseClient) return null;
 
-        const newThread = {
-            id: crypto.randomUUID(),
-            title: data.title,
-            category: data.category,
-            content: data.content,
-            image: data.image || null,
-            author: "匿名ユーザー",
-            createdAt: new Date().toISOString(),
-            comments: []
-        };
+        try {
+            const newThread = {
+                id: crypto.randomUUID(),
+                title: data.title,
+                category: data.category,
+                content: data.content,
+                image: data.image || null,
+                author: "匿名ユーザー"
+            };
 
-        threads.unshift(newThread);
+            const { data: savedThread, error } = await supabaseClient
+                .from(this.THREAD_TABLE)
+                .insert(newThread)
+                .select()
+                .single();
 
-        const saved = this.saveThreads(threads);
+            if (error) throw error;
 
-        return saved ? newThread : null;
+            return {
+                id: savedThread.id,
+                title: savedThread.title,
+                category: savedThread.category,
+                content: savedThread.content,
+                image: savedThread.image || null,
+                author: savedThread.author,
+                createdAt: savedThread.created_at,
+                comments: []
+            };
+
+        } catch (error) {
+            console.error("スレッド作成エラー:", error);
+            return null;
+        }
     },
 
     // ====================================
     // コメント・返信追加
     // ====================================
 
-    addComment(threadId, content, parentId = null, image = null) {
+    async addComment(threadId, content, parentId = null, image = null) {
 
-        const threads = this.getThreads();
+        if (!supabaseClient) return false;
 
-        const thread = threads.find(
-            item => item.id === threadId
-        );
+        try {
+            if (parentId) {
+                const { data: parent, error: parentError } =
+                    await supabaseClient
+                        .from(this.COMMENT_TABLE)
+                        .select("id")
+                        .eq("id", parentId)
+                        .eq("thread_id", threadId)
+                        .maybeSingle();
 
-        if (!thread) {
+                if (parentError) throw parentError;
+                if (!parent) return false;
+            }
+
+            const newComment = {
+                id: crypto.randomUUID(),
+                thread_id: threadId,
+                parent_id: parentId,
+                content: content,
+                image: image || null,
+                author: "匿名ユーザー"
+            };
+
+            const { error } = await supabaseClient
+                .from(this.COMMENT_TABLE)
+                .insert(newComment);
+
+            if (error) throw error;
+
+            return true;
+
+        } catch (error) {
+            console.error("コメント保存エラー:", error);
             return false;
         }
-
-        // コメント配列がない場合の対策
-        if (!Array.isArray(thread.comments)) {
-            thread.comments = [];
-        }
-
-        // 返信先が存在するか確認
-        if (parentId) {
-            const parentExists = thread.comments.some(
-                comment => comment.id === parentId
-            );
-
-            if (!parentExists) {
-                return false;
-            }
-        }
-
-        const newComment = {
-            id: crypto.randomUUID(),
-            parentId: parentId,
-            content: content,
-            image: image || null,
-            author: "匿名ユーザー",
-            createdAt: new Date().toISOString()
-        };
-
-        thread.comments.push(newComment);
-
-        return this.saveThreads(threads);
     },
 
     // ====================================
     // 通報一覧取得
     // ====================================
 
-    getReports() {
+    async getReports() {
+
+        if (!supabaseClient) return [];
 
         try {
-            return JSON.parse(
-                localStorage.getItem(this.REPORT_KEY) || "[]"
-            );
+            const { data, error } = await supabaseClient
+                .from(this.REPORT_TABLE)
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+
+            return (data || []).map(report => ({
+                id: report.id,
+                threadId: report.thread_id,
+                reason: report.reason,
+                createdAt: report.created_at,
+                status: report.status
+            }));
 
         } catch (error) {
-            console.error("通報データ読み込みエラー", error);
+            console.error("通報取得エラー:", error);
             return [];
         }
     },
@@ -135,30 +223,28 @@ const Works = {
     // スレッド通報
     // ====================================
 
-    reportThread(threadId, reason) {
+    async reportThread(threadId, reason) {
+
+        if (!supabaseClient) return false;
 
         try {
-            const reports = this.getReports();
-
             const newReport = {
                 id: crypto.randomUUID(),
-                threadId: threadId,
+                thread_id: threadId,
                 reason: reason,
-                createdAt: new Date().toISOString(),
                 status: "未確認"
             };
 
-            reports.push(newReport);
+            const { error } = await supabaseClient
+                .from(this.REPORT_TABLE)
+                .insert(newReport);
 
-            localStorage.setItem(
-                this.REPORT_KEY,
-                JSON.stringify(reports)
-            );
+            if (error) throw error;
 
             return true;
 
         } catch (error) {
-            console.error("通報保存エラー", error);
+            console.error("通報保存エラー:", error);
             return false;
         }
     },
@@ -167,69 +253,89 @@ const Works = {
     // スレッド削除
     // ====================================
 
-    deleteThread(threadId) {
+    async deleteThread(threadId) {
 
-        const threads = this.getThreads();
+        if (!supabaseClient) return false;
 
-        const filtered = threads.filter(
-            thread => thread.id !== threadId
-        );
+        try {
+            const { error } = await supabaseClient
+                .from(this.THREAD_TABLE)
+                .delete()
+                .eq("id", threadId);
 
-        return this.saveThreads(filtered);
+            if (error) throw error;
+
+            return true;
+
+        } catch (error) {
+            console.error("スレッド削除エラー:", error);
+            return false;
+        }
     },
 
     // ====================================
     // コメント削除
     // ====================================
 
-    deleteComment(threadId, commentId) {
+    async deleteComment(threadId, commentId) {
 
-        const threads = this.getThreads();
+        if (!supabaseClient) return false;
 
-        const thread = threads.find(
-            item => item.id === threadId
-        );
+        try {
+            const { data: comments, error: fetchError } =
+                await supabaseClient
+                    .from(this.COMMENT_TABLE)
+                    .select("*")
+                    .eq("thread_id", threadId);
 
-        if (!thread) {
+            if (fetchError) throw fetchError;
+
+            const deleteIds = new Set([commentId]);
+
+            let changed = true;
+
+            while (changed) {
+                changed = false;
+
+                (comments || []).forEach(comment => {
+                    if (
+                        comment.parent_id &&
+                        deleteIds.has(comment.parent_id) &&
+                        !deleteIds.has(comment.id)
+                    ) {
+                        deleteIds.add(comment.id);
+                        changed = true;
+                    }
+                });
+            }
+
+            const { error } = await supabaseClient
+                .from(this.COMMENT_TABLE)
+                .delete()
+                .in("id", Array.from(deleteIds))
+                .eq("thread_id", threadId);
+
+            if (error) throw error;
+
+            return true;
+
+        } catch (error) {
+            console.error("コメント削除エラー:", error);
             return false;
         }
-
-        // 指定コメントと、その返信も削除
-        const deleteIds = new Set([commentId]);
-
-        let changed = true;
-
-        while (changed) {
-            changed = false;
-
-            thread.comments.forEach(comment => {
-                if (
-                    comment.parentId &&
-                    deleteIds.has(comment.parentId) &&
-                    !deleteIds.has(comment.id)
-                ) {
-                    deleteIds.add(comment.id);
-                    changed = true;
-                }
-            });
-        }
-
-        thread.comments = thread.comments.filter(
-            comment => !deleteIds.has(comment.id)
-        );
-
-        return this.saveThreads(threads);
     },
 
     // ====================================
     // 全データ削除
     // ====================================
 
-    clearAll() {
+    async clearAll() {
 
-        localStorage.removeItem(this.THREAD_KEY);
-        localStorage.removeItem(this.REPORT_KEY);
+        console.warn(
+            "安全のため、全データ削除は無効にしています。"
+        );
 
+        return false;
     }
 
 };
