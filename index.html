@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMMUNITY BOARD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-inner">
+            <h1>COMMUNITY BOARD</h1>
+            <p>誰でも自由に話せる匿名掲示板</p>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- 新規スレッド作成ボタン -->
+        <div class="dashboard-actions">
+            <a href="create.html" class="create-thread-button">
+                ＋ スレッドを作成
+            </a>
+        </div>
+
+        <!-- スレッド検索 -->
+        <section class="search-section">
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="スレッド・本文・カテゴリーを検索..."
+            >
+
+            <button type="button" id="searchButton">
+                検索
+            </button>
+
+        </section>
+
+        <!-- スレッド一覧 -->
+        <section class="thread-section">
+
+            <div class="section-heading">
+                <h2>スレッド一覧</h2>
+                <span id="threadCount">0件</span>
+            </div>
+
+            <div id="threadList">
+                <p>スレッドはまだありません。</p>
+            </div>
+
+        </section>
+
+        <!-- スレッド詳細 -->
+        <section
+            class="detail-section"
+            id="threadDetail"
+            hidden
+        >
+
+            <!-- 上部操作 -->
+            <div class="detail-top">
+
+                <button type="button" id="backButton">
+                    ← 一覧に戻る
+                </button>
+
+                <button type="button" id="copyDetailURL">
+                    URLをコピー
+                </button>
+
+            </div>
+
+            <!-- スレッド内検索 -->
+            <div class="thread-search-section">
+
+                <input
+                    type="text"
+                    id="threadSearchInput"
+                    placeholder="このスレッド内を検索..."
+                >
+
+                <button
+                    type="button"
+                    id="threadSearchButton"
+                >
+                    検索
+                </button>
+
+            </div>
+
+            <div id="threadSearchResults"></div>
+
+            <!-- スレッド本文 -->
+            <div id="threadDetailContent"></div>
+
+            <!-- コメント投稿欄 -->
+            <div class="comment-form-section">
+
+                <h3>コメント・返信</h3>
+
+                <form id="commentForm">
+
+                    <textarea
+                        id="commentContent"
+                        placeholder="コメントを入力してください"
+                        maxlength="2000"
+                    ></textarea>
+
+                    <label for="commentImage">
+                        画像を添付（任意）
+                    </label>
+
+                    <input
+                        type="file"
+                        id="commentImage"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                    >
+
+                    <div id="commentImagePreview"></div>
+
+                    <div id="replyTarget"></div>
+
+                    <button
+                        type="submit"
+                        id="submitComment"
+                    >
+                        コメントする
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- コメント一覧 -->
+            <div id="commentList"></div>
+
+        </section>
+
+        <!-- 通報案内 -->
+        <section class="report-section">
+
+            <h2>安心して利用するために</h2>
+
+            <p>
+                不適切な投稿を見つけた場合は、
+                通報機能をご利用ください。
+            </p>
+
+        </section>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="footer">
+        <p>COMMUNITY BOARD</p>
+        <p>Anonymous Community</p>
+    </footer>
+
+    <script src="works.js"></script>
+    <script src="sketch.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スレッドを作成 | COMMUNITY BOARD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-inner">
+            <h1>COMMUNITY BOARD</h1>
+            <p>誰でも自由に話せる匿名掲示板</p>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <section class="post-section">
+
+            <h2>スレッドを作成</h2>
+
+            <form id="threadForm">
+
+                <label for="threadTitle">タイトル</label>
+
+                <input
+                    type="text"
+                    id="threadTitle"
+                    placeholder="スレッドのタイトル"
+                    maxlength="100"
+                    required
+                >
+
+                <label for="threadCategory">カテゴリー</label>
+
+                <select id="threadCategory" required>
+                    <option value="雑談">雑談</option>
+                    <option value="質問">質問</option>
+                    <option value="趣味">趣味</option>
+                    <option value="ニュース">ニュース</option>
+                    <option value="その他">その他</option>
+                </select>
+
+                <label for="threadContent">本文</label>
+
+                <textarea
+                    id="threadContent"
+                    placeholder="自由に投稿してください"
+                    maxlength="5000"
+                    required
+                ></textarea>
+
+                <label for="threadImage">画像を添付（任意）</label>
+
+                <input
+                    type="file"
+                    id="threadImage"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                >
+
+                <div id="imagePreview"></div>
+
+                <button type="submit" id="submitThread">
+                    スレッドを投稿する
+                </button>
+
+            </form>
+
+            <p>
+                <a href="index.html">← スレッド一覧に戻る</a>
+            </p>
+
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>COMMUNITY BOARD</p>
+        <p>Anonymous Community</p>
+    </footer>
+
+    <script src="works.js"></script>
+
+    <script>
+        const form = document.getElementById("threadForm");
+        const imageInput = document.getElementById("threadImage");
+        const preview = document.getElementById("imagePreview");
+        const submitButton = document.getElementById("submitThread");
+
+        // 画像読み込み
+        function readImage(file) {
+            return new Promise((resolve, reject) => {
+
+                if (!file) {
+                    resolve(null);
+                    return;
+                }
+
+                const allowedTypes = [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/gif"
+                ];
+
+                if (!allowedTypes.includes(file.type)) {
+                    reject(new Error(
+                        "JPEG、PNG、WEBP、GIF画像を選択してください。"
+                    ));
+                    return;
+                }
+
+                if (file.size > 1024 * 1024) {
+                    reject(new Error(
+                        "画像サイズは1MB以下にしてください。"
+                    ));
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result);
+
+                reader.onerror = () => reject(
+                    new Error("画像を読み込めませんでした。")
+                );
+
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 画像プレビュー
+        imageInput.addEventListener("change", async () => {
+
+            preview.innerHTML = "";
+
+            const file = imageInput.files[0];
+
+            if (!file) return;
+
+            try {
+                const image = await readImage(file);
+
+                const img = document.createElement("img");
+
+                img.src = image;
+                img.alt = "画像プレビュー";
+
+                preview.appendChild(img);
+
+            } catch (error) {
+                alert(error.message);
+                imageInput.value = "";
+            }
+        });
+
+        // スレッド投稿
+        form.addEventListener("submit", async (event) => {
+
+            event.preventDefault();
+
+            const title = document.getElementById("threadTitle")
+                .value.trim();
+
+            const category = document.getElementById("threadCategory")
+                .value;
+
+            const content = document.getElementById("threadContent")
+                .value.trim();
+
+            const imageFile = imageInput.files[0];
+
+            if (!title || !content) {
+                alert("タイトルと本文を入力してください。");
+                return;
+            }
+
+            submitButton.disabled = true;
+
+            try {
+                const image = await readImage(imageFile);
+
+                const newThread = Works.createThread({
+                    title,
+                    category,
+                    content,
+                    image
+                });
+
+                if (!newThread) {
+                    throw new Error("投稿を保存できませんでした。");
+                }
+
+                alert("スレッドを投稿しました！");
+
+                // 最初のページに戻る
+                window.location.href = "index.html";
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitButton.disabled = false;
+            }
+
+        });
+    </script>
+
+</body>
+</html>

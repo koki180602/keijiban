@@ -1,0 +1,604 @@
+
+/* ========================================
+   COMMUNITY BOARD
+   全ページ共通デザイン
+======================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #FFFFCC;
+    color: #333333;
+    font-family: Arial, "Meiryo", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+button,
+input,
+textarea,
+select {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* ========================================
+   ヘッダー
+======================================== */
+
+.header {
+    padding: 18px 15px;
+    background: #F5F5DC;
+    border-bottom: 1px solid #CCCC99;
+    text-align: center;
+}
+
+.header h1 {
+    margin: 0;
+    color: #006600;
+    font-size: 28px;
+}
+
+.header p {
+    margin: 4px 0 0;
+    color: #666666;
+    font-size: 12px;
+}
+
+/* ========================================
+   メインコンテンツ
+======================================== */
+
+.container {
+    width: 95%;
+    max-width: 1100px;
+    margin: 20px auto;
+}
+
+section {
+    margin-bottom: 22px;
+}
+
+section h2 {
+    margin: 0 0 12px;
+    padding: 7px 10px;
+    background: #E8E8C8;
+    border: 1px solid #CCCC99;
+    color: #006600;
+    font-size: 17px;
+}
+
+/* ========================================
+   新規スレッド作成ボタン
+======================================== */
+
+.dashboard-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 20px 0 12px;
+}
+
+.create-thread-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #006600;
+    border-radius: 4px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.create-thread-button:hover {
+    background: #004400;
+}
+
+/* ========================================
+   共通リンク
+======================================== */
+
+a {
+    color: #0000CC;
+}
+
+.container > p a {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+/* ========================================
+   スレッド検索
+======================================== */
+
+.search-section {
+    padding: 10px;
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+.search-section input {
+    width: 75%;
+    padding: 9px;
+    border: 1px solid #AAAAAA;
+}
+
+.search-section button {
+    padding: 9px 15px;
+    background: #006600;
+    border: none;
+    color: #FFFFFF;
+}
+
+.search-section button:hover {
+    background: #004400;
+}
+
+/* ========================================
+   スレッド作成ページ
+======================================== */
+
+.post-section {
+    max-width: 800px;
+    margin: 25px auto;
+    padding: 18px;
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+#threadForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#threadForm label {
+    font-weight: bold;
+}
+
+#threadForm input,
+#threadForm select,
+#threadForm textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #AAAAAA;
+    background: #FFFFFF;
+}
+
+#threadForm textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+#threadForm button {
+    align-self: flex-start;
+    padding: 10px 22px;
+    background: #006600;
+    border: none;
+    border-radius: 3px;
+    color: #FFFFFF;
+}
+
+#threadForm button:hover {
+    background: #004400;
+}
+
+#threadForm button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#imagePreview img {
+    display: block;
+    max-width: 100%;
+    max-height: 250px;
+    margin-top: 10px;
+    border: 1px solid #DDDDDD;
+}
+
+/* ========================================
+   スレッド一覧
+======================================== */
+
+.thread-section {
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 12px;
+}
+
+.section-heading h2 {
+    flex: 1;
+}
+
+#threadCount {
+    color: #666666;
+    font-size: 12px;
+}
+
+#threadList {
+    padding: 0 12px;
+}
+
+.thread-card {
+    padding: 12px 5px;
+    border-bottom: 1px dotted #AAAAAA;
+    overflow-wrap: anywhere;
+}
+
+.thread-card:last-child {
+    border-bottom: none;
+}
+
+.thread-card h3 {
+    margin: 8px 0;
+    color: #0000CC;
+    font-size: 16px;
+}
+
+.thread-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: #777777;
+    font-size: 11px;
+}
+
+.thread-category {
+    color: #006600;
+    font-weight: bold;
+}
+
+.thread-card p {
+    margin: 5px 0;
+}
+
+.open-thread {
+    padding: 6px 12px;
+    background: #EEEEEE;
+    border: 1px solid #AAAAAA;
+}
+
+.open-thread:hover {
+    background: #DDDDDD;
+}
+
+/* ========================================
+   スレッド詳細
+======================================== */
+
+#threadDetail {
+    padding: 12px;
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+.detail-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.detail-top button {
+    padding: 7px 12px;
+    background: #EEEEEE;
+    border: 1px solid #AAAAAA;
+}
+
+.detail-top button:hover {
+    background: #DDDDDD;
+}
+
+#threadDetailContent {
+    padding: 12px 5px;
+    border-bottom: 1px solid #CCCCCC;
+}
+
+#threadDetailContent h2 {
+    margin: 12px 0;
+    padding: 0;
+    background: none;
+    border: none;
+    color: #333333;
+    font-size: 18px;
+}
+
+#threadDetailContent > button {
+    padding: 5px 12px;
+    background: #EEEEEE;
+    border: 1px solid #AAAAAA;
+}
+
+/* ========================================
+   コメント・返信
+======================================== */
+
+.board-post {
+    padding: 12px 5px;
+    border-bottom: 1px dotted #AAAAAA;
+    overflow-wrap: anywhere;
+}
+
+.post-number {
+    margin-right: 5px;
+    color: #008000;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.post-number:hover {
+    text-decoration: underline;
+}
+
+.post-date {
+    margin-left: 5px;
+    color: #888888;
+    font-size: 11px;
+}
+
+.post-author {
+    margin-left: 8px;
+    color: #006600;
+}
+
+.post-content {
+    margin: 8px 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.reply-link {
+    color: #0000CC;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.reply-button {
+    padding: 4px 10px;
+    background: #EEEEEE;
+    border: 1px solid #AAAAAA;
+    font-size: 12px;
+}
+
+.reply-button:hover {
+    background: #DDDDDD;
+}
+
+.post-image {
+    display: block;
+    max-width: 100%;
+    max-height: 400px;
+    margin: 10px 0;
+    object-fit: contain;
+    border: 1px solid #DDDDDD;
+}
+
+.post-highlight {
+    background: #FFFFCC;
+}
+
+/* ========================================
+   スレッド内検索
+======================================== */
+
+.thread-search-section {
+    margin: 10px 0;
+    padding: 8px;
+    background: #F7F7E8;
+    border: 1px solid #DDDDCC;
+}
+
+.thread-search-section input {
+    width: 75%;
+    padding: 7px;
+    border: 1px solid #AAAAAA;
+}
+
+.thread-search-section button {
+    padding: 7px 12px;
+    background: #EEEEEE;
+    border: 1px solid #AAAAAA;
+}
+
+.search-result-heading {
+    padding: 8px;
+    font-weight: bold;
+}
+
+.search-result-item {
+    padding: 8px;
+    border-bottom: 1px dotted #CCCCCC;
+}
+
+.search-result-item p {
+    overflow-wrap: anywhere;
+}
+
+.search-result-button {
+    color: #0000CC;
+    background: none;
+    border: none;
+    text-decoration: underline;
+}
+
+/* ========================================
+   コメント投稿欄
+   画面下部に固定
+======================================== */
+
+.comment-form-section {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 30px);
+    max-width: 1070px;
+    margin: 0;
+    padding: 10px 15px;
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+}
+
+.comment-form-section h3 {
+    margin: 0 0 5px;
+    color: #006600;
+    font-size: 13px;
+}
+
+#commentForm {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#commentForm textarea {
+    width: 100%;
+    min-height: 45px;
+    max-height: 100px;
+    margin: 0;
+    padding: 8px;
+    resize: vertical;
+    border: 1px solid #AAAAAA;
+}
+
+#commentForm label {
+    font-size: 12px;
+}
+
+#commentForm input[type="file"] {
+    margin: 3px 0;
+    font-size: 11px;
+}
+
+#commentImagePreview img {
+    max-width: 100%;
+    max-height: 65px;
+    object-fit: contain;
+}
+
+#replyTarget {
+    color: #0000CC;
+    font-size: 12px;
+}
+
+#submitComment {
+    align-self: flex-start;
+    padding: 7px 18px;
+    background: #006600;
+    border: none;
+    color: #FFFFFF;
+    font-size: 12px;
+}
+
+#submitComment:hover {
+    background: #004400;
+}
+
+#submitComment:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#commentList {
+    padding-bottom: 190px;
+}
+
+/* ========================================
+   通報案内
+======================================== */
+
+.report-section {
+    padding: 12px;
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+/* ========================================
+   フッター
+======================================== */
+
+.footer {
+    margin-top: 30px;
+    padding: 20px 10px;
+    background: #F5F5DC;
+    border-top: 1px solid #CCCC99;
+    color: #777777;
+    text-align: center;
+    font-size: 12px;
+}
+
+/* ========================================
+   スマートフォン対応
+======================================== */
+
+@media (max-width: 600px) {
+
+    body {
+        font-size: 13px;
+    }
+
+    .header h1 {
+        font-size: 23px;
+    }
+
+    .container {
+        width: 96%;
+        margin: 12px auto;
+    }
+
+    .dashboard-actions {
+        margin: 12px 0;
+    }
+
+    .create-thread-button {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .search-section input,
+    .thread-search-section input {
+        width: 68%;
+    }
+
+    .detail-top {
+        flex-wrap: wrap;
+    }
+
+    .comment-form-section {
+        width: 100%;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        border-radius: 10px 10px 0 0;
+    }
+
+    #commentForm textarea {
+        min-height: 40px;
+        max-height: 80px;
+    }
+
+    #commentList {
+        padding-bottom: 180px;
+    }
+
+    .post-image {
+        max-height: 250px;
+    }
+}
